@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package nextcloud;
+
+service NextcloudService {
+    rpc GetFile (FileRequest) returns (FileResponse);
+    rpc UploadFile (UploadFileRequest) returns (UploadFileResponse);
+}
+
+message UploadFileRequest {
+    string filename = 1;
+    bytes content = 2;
+}
+
+message UploadFileResponse {
+    string status = 1;
+    string message = 2;
+}
+
+message FileRequest {
+    string path = 1;  // The path to the file/folder in Nextcloud
+}
+
+message FileResponse {
+    bytes content = 1;  // The content of the file/folder
+}
