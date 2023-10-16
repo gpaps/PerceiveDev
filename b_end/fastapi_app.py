@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException, File
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path
 from fastapi.responses import StreamingResponse
 import cv2
 import numpy as np
@@ -7,22 +7,21 @@ import skimage.io
 import requests
 import mimetypes
 import io
+# Nextcloud signin and communication between modules
 from webdav_setup_config import client
 from utils import get_file_from_nextcloud, upload_file_to_nextcloud, list_files_recursive
+# authentication package
+from auth.roles import UserRole
+from auth.middleware import has_permission
+# logging
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
-class Role(Enum):
-    VISITOR = "visitor"
-    EDUCATOR = "educator"
-    EXPERTS = "experts"
-    PERCEIVE_Experts = "per_experts"
-    PERCEIVE_Developers = "per_devs"
-    Admin = "admin"
 
-# @app.get("/{cmd:cmd,var1:var1,var2:var2}")  # also downloads the file if there is no function_handle
+# @app.get("/{cmd:cmd,var1:var1,var2:var2}")  #
 # def read_file(cmd: str):
 #     if cmd=="upload":
 #         print("UPLOAD")
@@ -32,7 +31,6 @@ class Role(Enum):
 #
 #     elif cmd=="image":
 #         print("UPLOAD")
-
 
 
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
@@ -82,7 +80,6 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Failed to upload image.")
 
 
-
 @app.get("/image/{filename}")
 async def get_image(filename: str):
     try:
@@ -107,3 +104,54 @@ async def list_all_files():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/some_endpoint/")
+async def some_endpoint(user_role: UserRole):
+    if not has_permission(user_role, "Tools"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    # rest of your endpoint logic
+
+
+# Create middleware for permission checking
+def get_current_role():
+    # Mocked function to return a role, you would get this from your authentication method
+    return Role.EDUCATOR
+
+
+def has_permission(required_permission: str):
+    def role_verifier(current_role: Role = Depends(get_current_role)):
+        if required_permission not in ROLE_PERMISSIONS[current_role]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        return True
+
+
+# Create FastAPI routes and apply permissions:
+@app.get("/api_endpoint")
+def api_endpoint(permissions: bool = Depends(has_permission("api"))):
+    return {"message": "You have API access!"}
+
+
+@app.get("/tools_endpoint")
+def tools_endpoint(permissions: bool = Depends(has_permission("tools"))):
+    return {"message": "You have tools access!"}
+
+
+@app.get("/services_endpoint")
+def services_endpoint(permissions: bool = Depends(has_permission("services"))):
+    return {"message": "You have services access!"}
+
+
+@app.get("/datasets_endpoint")
+def datasets_endpoint(permissions: bool = Depends(has_permission("datasets"))):
+    return {"message": "You have datasets access!"}
+
+
+@app.get("/code_repo_endpoint")
+def code_repo_endpoint(permissions: bool = Depends(has_permission("code_repo"))):
+    return {"message": "You have code repository access!"}
+
+
+@app.get("/change_user_permissions_endpoint")
+def change_user_permissions_endpoint(permissions: bool = Depends(has_permission("change_user_permissions"))):
+    return {"message": "You have permission to change user permissions!"}
