@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query
 from fastapi.responses import StreamingResponse
 import cv2
 import numpy as np
@@ -126,32 +126,57 @@ def has_permission(required_permission: str):
         return True
 
 
-# Create FastAPI routes and apply permissions:
-@app.get("/api_endpoint")
-def api_endpoint(permissions: bool = Depends(has_permission("api"))):
-    return {"message": "You have API access!"}
+# This is a basic function that emulates a user authentication system.
+# We would like to fetch the user's role from a database or JWT token.
+# For simplicity, we will use query parameters.
+def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
+    return role
 
 
-@app.get("/tools_endpoint")
-def tools_endpoint(permissions: bool = Depends(has_permission("tools"))):
-    return {"message": "You have tools access!"}
+@app.get("/web_portal/")
+async def web_portal(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Tools"):
+        raise HTTPException(status_code=403, detail="Permission denied to access web portal")
+    return {"detail": "Welcome to the web portal!"}
 
 
-@app.get("/services_endpoint")
-def services_endpoint(permissions: bool = Depends(has_permission("services"))):
-    return {"message": "You have services access!"}
+@app.get("/educational_services/")
+async def educational_services(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Services"):
+        raise HTTPException(status_code=403, detail="Permission denied to access educational services")
+    return {"detail": "Access granted to educational services"}
 
 
-@app.get("/datasets_endpoint")
-def datasets_endpoint(permissions: bool = Depends(has_permission("datasets"))):
-    return {"message": "You have datasets access!"}
+@app.get("/expert_tools/")
+async def expert_tools(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Tools"):
+        raise HTTPException(status_code=403, detail="Permission denied to access expert tools")
+    return {"detail": "Access granted to expert tools"}
 
 
-@app.get("/code_repo_endpoint")
-def code_repo_endpoint(permissions: bool = Depends(has_permission("code_repo"))):
-    return {"message": "You have code repository access!"}
+@app.get("/datasets/")
+async def datasets(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Dataset"):
+        raise HTTPException(status_code=403, detail="Permission denied to access datasets")
+    return {"detail": "Access granted to datasets"}
 
 
-@app.get("/change_user_permissions_endpoint")
-def change_user_permissions_endpoint(permissions: bool = Depends(has_permission("change_user_permissions"))):
-    return {"message": "You have permission to change user permissions!"}
+@app.get("/trained_models/")
+async def trained_models(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Trained_Models"):
+        raise HTTPException(status_code=403, detail="Permission denied to access trained models")
+    return {"detail": "Access granted to trained models"}
+
+
+@app.get("/code_repository/")
+async def code_repository(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Code_Repo"):
+        raise HTTPException(status_code=403, detail="Permission denied to access code repository")
+    return {"detail": "Access granted to code repository"}
+
+
+@app.get("/change_user_permissions/")
+async def change_user_permissions(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Change_User_Permissions"):
+        raise HTTPException(status_code=403, detail="Permission denied to change user permissions")
+    return {"detail": "Access granted to change user permissions"}
