@@ -21,18 +21,6 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
 
-# @app.get("/{cmd:cmd,var1:var1,var2:var2}")  #
-# def read_file(cmd: str):
-#     if cmd=="upload":
-#         print("UPLOAD")
-#
-#         # pile of code
-#         # broken
-#
-#     elif cmd=="image":
-#         print("UPLOAD")
-
-
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
 def read_file(path: str):
     try:
@@ -119,16 +107,16 @@ def get_current_role():
     return Role.EDUCATOR
 
 
-def has_permission(required_permission: str):
-    def role_verifier(current_role: Role = Depends(get_current_role)):
-        if required_permission not in ROLE_PERMISSIONS[current_role]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-        return True
+# def has_permission(required_permission: str):
+#     def role_verifier(current_role: Role = Depends(get_current_role)):
+#         if required_permission not in ROLE_PERMISSIONS[current_role]:
+#             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+#         return True
 
 
 # This is a basic function that emulates a user authentication system.
 # We would like to fetch the user's role from a database or JWT token.
-# For simplicity, we will use query parameters.
+# We will use query parameters.
 def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
     return role
 
