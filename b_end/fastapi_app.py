@@ -12,13 +12,14 @@ from webdav_setup_config import client
 from utils import get_file_from_nextcloud, upload_file_to_nextcloud, list_files_recursive
 # authentication package
 from auth.roles import UserRole
-from auth.middleware import has_permission
+from auth.middleware import has_permission, auth_middleware
 # logging
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
+app.middleware("http")(auth_middleware)
 
 
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
@@ -107,16 +108,9 @@ def get_current_role():
     return Role.EDUCATOR
 
 
-# def has_permission(required_permission: str):
-#     def role_verifier(current_role: Role = Depends(get_current_role)):
-#         if required_permission not in ROLE_PERMISSIONS[current_role]:
-#             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-#         return True
-
-
 # This is a basic function that emulates a user authentication system.
 # We would like to fetch the user's role from a database or JWT token.
-# We will use query parameters.
+# Using query parameters.
 def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
     return role
 
