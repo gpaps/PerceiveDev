@@ -11,6 +11,7 @@ NEXTCLOUD_URL = os.getenv("NEXTCLOUD_URL")
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
 
+
 def get_file_from_nextcloud(path: str) -> bytes:
     try:
         response = requests.get(
@@ -23,7 +24,10 @@ def get_file_from_nextcloud(path: str) -> bytes:
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 UPLOAD_FOLDER = "Photos"
+
+
 def upload_file_to_nextcloud(filename: str, content: bytes) -> tuple:
     try:
         remote_path = f"{UPLOAD_FOLDER}/{filename}"
@@ -45,6 +49,8 @@ def upload_file_to_nextcloud(filename: str, content: bytes) -> tuple:
 
 
 import xml.etree.ElementTree as ET
+
+
 def list_files_recursive(remote_path="/"):
     """
     Recursively list files and directories in Nextcloud starting from remote_path.
