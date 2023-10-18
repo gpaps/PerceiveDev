@@ -115,49 +115,49 @@ def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
     return role
 
 
-@app.get("/web_portal/")
+@app.get("/web_portal/", tags=["Tools"])
 async def web_portal(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Tools"):
         raise HTTPException(status_code=403, detail="Permission denied to access web portal")
     return {"detail": "Welcome to the web portal!"}
 
 
-@app.get("/educational_services/")
+@app.get("/educational_services/", tags=["Services"])
 async def educational_services(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Services"):
         raise HTTPException(status_code=403, detail="Permission denied to access educational services")
     return {"detail": "Access granted to educational services"}
 
 
-@app.get("/expert_tools/")
+@app.get("/expert_tools/", tags=["Tools"])
 async def expert_tools(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Tools"):
         raise HTTPException(status_code=403, detail="Permission denied to access expert tools")
     return {"detail": "Access granted to expert tools"}
 
 
-@app.get("/datasets/")
+@app.get("/datasets/", tags=["Dataset"])
 async def datasets(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Dataset"):
         raise HTTPException(status_code=403, detail="Permission denied to access datasets")
     return {"detail": "Access granted to datasets"}
 
 
-@app.get("/trained_models/")
+@app.get("/trained_models/", tags=["Trained_Models"])
 async def trained_models(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Trained_Models"):
         raise HTTPException(status_code=403, detail="Permission denied to access trained models")
     return {"detail": "Access granted to trained models"}
 
 
-@app.get("/code_repository/")
+@app.get("/code_repository/", tags=["Code_Repo"])
 async def code_repository(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Code_Repo"):
         raise HTTPException(status_code=403, detail="Permission denied to access code repository")
     return {"detail": "Access granted to code repository"}
 
 
-@app.get("/change_user_permissions/")
+@app.get("/change_user_permissions/", tags=["Change_User_Permissions"])
 async def change_user_permissions(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Change_User_Permissions"):
         raise HTTPException(status_code=403, detail="Permission denied to change user permissions")
