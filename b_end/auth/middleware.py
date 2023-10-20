@@ -1,10 +1,36 @@
 from .roles import UserRole
 from .permissions import PERMISSIONS
 from fastapi import Request, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from decouple import config
+from jwt import PyJWTError
 import jwt
+from .jwt import get_user, users_db
+
+PUBLIC_ENDPOINTS = {"/token"}
 
 SECRET_KEY = config('JWT_SECRET_KEY')
+ALGORITHM = "HS256"
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"}
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        user = get_user(users_db, username=username)
+        if user is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return user
+
 
 def extract_user_role_from_token(token: str) -> UserRole:
     """
@@ -27,6 +53,11 @@ def has_permission(user_role: UserRole, permission: str) -> bool:
 
 
 async def auth_middleware(request: Request, call_next):
+
+    # If it's a public endpoint, bypass the checks.
+    if request.url.path in PUBLIC_ENDPOINTS:
+        return await call_next(request)
+
     # Extract the token from the request headers. This assumes a header format of "Authorization: Bearer TOKEN"
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
