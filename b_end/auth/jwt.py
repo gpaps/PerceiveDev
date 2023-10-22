@@ -19,12 +19,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+#TODO
 # Mock database for user details
 users_db = {
-    "testuser": {
-        "username": "testuser",
-        "hashed_password": pwd_context.hash("testpassword"),
-        "role": UserRole.EDUCATOR
+    "tester": {
+        "username": "tester",
+        "hashed_password": pwd_context.hash("password123"),
+        "role": UserRole.ADMIN
     }
 }
 
@@ -32,10 +33,6 @@ users_db = {
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-# simplified version of get_user() method
-# def get_user(db, username: str):
-#     user_dict = db.get(username)
-#     return UserInDB(**user_dict) if user_dict else None
 
 # non-simplified get_user() method.
 def get_user(db, username: str):
