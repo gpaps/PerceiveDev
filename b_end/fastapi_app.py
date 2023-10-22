@@ -99,11 +99,6 @@ async def list_all_files():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @app.get("/some_endpoint/")
-# async def some_endpoint(user_role: UserRole):
-#     if not has_permission(user_role, "Tools"):
-#         raise HTTPException(status_code=403, detail="Permission denied")
-
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = get_user(users_db, username=form_data.username)
@@ -131,6 +126,7 @@ def get_current_role():
 # We would like to fetch the user's role from a database or JWT token.
 # Using query parameters.
 def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
+    print(f'Role:{role}', f"UserRoles:{UserRole}" )
     return role
 
 
