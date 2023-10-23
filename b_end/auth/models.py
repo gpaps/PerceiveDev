@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from .roles import UserRole
 
 
 class User(BaseModel):
@@ -8,6 +9,7 @@ class User(BaseModel):
 
 class UserInDB(User):
     hashed_password: str
+    role: UserRole
 
 
 class Token(BaseModel):
