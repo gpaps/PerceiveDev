@@ -34,13 +34,13 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-# non-simplified get_user() method.
 def get_user(db, username: str):
     user_dict = db.get(username)
     if user_dict:
         return UserInDB(username=user_dict["username"],
                         hashed_password=user_dict["hashed_password"],
-                        password="dummy"
+                        password="dummy",
+                        role=user_dict["role"]
                         )
     return UserInDB(**user_dict) if user_dict else None
 
