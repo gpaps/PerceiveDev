@@ -124,7 +124,7 @@ def get_current_role():
 # We would like to fetch the user's role from a database or JWT token.
 # Using query parameters.
 def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
-    print(f'Role:{role}', f"UserRoles:{UserRole}" )
+    print(f'Role:{role}', f"UserRoles:{UserRole}")
     return role
 
 
