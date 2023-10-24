@@ -15,7 +15,7 @@ from utils import get_file_from_nextcloud, upload_file_to_nextcloud, list_files_
 from auth.jwt import (verify_password, get_user, create_access_token,
                       oauth2_scheme, users_db, ACCESS_TOKEN_EXPIRE_MINUTES)
 from auth.roles import UserRole
-from auth.middleware import has_permission, auth_middleware, get_current_user
+from auth.middleware import has_permission, auth_middleware  # , get_current_user
 from auth.models import User, UserInDB, Token
 from fastapi.security import OAuth2PasswordRequestForm
 # logging
@@ -26,8 +26,8 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 app.middleware("http")(auth_middleware)
 
-
-@app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
+# TODO to change the tag in the route/method: tags=["Documents"], test try
+@app.get("/file/{path:path}", tags=["Documents"])  # also downloads the file if there is no function_handle
 def read_file(path: str):
     try:
         content = get_file_from_nextcloud(path)
@@ -102,7 +102,6 @@ async def list_all_files():
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = get_user(users_db, username=form_data.username)
-    print(user)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
@@ -110,21 +109,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     # Embed the role in the token payload
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.username,  "role": user.role}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": user.username, "role": user.role},
+                                       expires_delta=access_token_expires)
 
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-def get_current_role():
-    # Mocked function to return a role, you would get this from your authentication method
-    return UserRole.EDUCATOR
-
-
-# This is a basic function that emulates a user authentication system.
+# This is a basic (MOCK)function that emulates a user authentication system.
 # We would like to fetch the user's role from a database or JWT token.
-# Using query parameters.
 def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
-    print(f'Role:{role}', f"UserRoles:{UserRole}")
+    # print(f'Role:{role}', f"UserRoles:{UserRole}")
     return role
 
 
