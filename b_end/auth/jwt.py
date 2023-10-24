@@ -19,7 +19,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-#TODO
+# TODO
 # Mock database for user details
 users_db = {
     "tester": {
@@ -43,7 +43,6 @@ def get_user(db, username: str):
                         role=user_dict["role"]
                         )
     return UserInDB(**user_dict) if user_dict else None
-
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
