@@ -56,17 +56,3 @@ PERMISSIONS = {
         "Change_User_Permissions": True
     },
 }
-
-
-
-
-
-# Mock permissions for each role
-# ROLE_PERMISSIONS = {
-#     Role.VISITOR: ["tools"],
-#     Role.EDUCATOR: ["api", "tools"],
-#     Role.EXPERT: ["api", "tools", "services"],
-#     Role.PERCEIVE_EXPERT: ["api", "tools", "services", "datasets"],
-#     Role.PERCEIVE_DEVELOPER: ["api", "tools", "services", "datasets", "code_repo"],
-#     Role.ADMIN: ["api", "tools", "services", "datasets", "code_repo", "change_user_permissions"]
-# }
