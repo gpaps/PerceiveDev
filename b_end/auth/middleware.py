@@ -11,7 +11,6 @@ PUBLIC_ENDPOINTS = {"/token"}
 
 SECRET_KEY = config('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -53,18 +52,22 @@ def has_permission(user_role: UserRole, permission: str) -> bool:
 
 
 async def auth_middleware(request: Request, call_next):
-
     # If it's a public endpoint, bypass the checks.
     if request.url.path in PUBLIC_ENDPOINTS:
         return await call_next(request)
 
     # Extract the token from the request headers. This assumes a header format of "Authorization: Bearer TOKEN"
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header or "Bearer " not in auth_header:
+        raise HTTPException(status_code=401, detail="Token is missing or not formatted correctly")
+    token = auth_header.replace("Bearer ", "")
+    print(f"Received Authorization header: {auth_header}")
+
     if not token:
         raise HTTPException(status_code=401, detail="Token is missing")
 
     user_role = extract_user_role_from_token(token)
-
+    print(f"This is the usrRole:{user_role} extracted from token from middleware,")
     # Fetch the route function associated with the current request
     route_function = request.scope.get("endpoint")
 
