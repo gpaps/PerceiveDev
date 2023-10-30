@@ -39,11 +39,17 @@ def verify_password(plain_password, hashed_password):
 #                         role=user_dict["role"]
 #                         )
 #     return UserInDB(**user_dict) if user_dict else None
+
 def get_user(db, username: str):
     user_dict = db.get(username)
     if user_dict:
-        return UserInDB(**user_dict)
+        return UserInDB(username=user_dict["username"],
+                        hashed_password=user_dict["hashed_password"],
+                        password="dummy",
+                        role=user_dict["role"]
+                        )
     return None
+
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
