@@ -55,7 +55,7 @@ PERMISSIONS = {
         "Code_Repo": True,
         "Change_User_Permissions": True,
         # dummy entries
-        "Documents": True
-
+        "Documents": True,
+        "web_portal": True,
     },
 }
