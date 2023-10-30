@@ -42,7 +42,7 @@ def extract_user_role_from_token(token: str) -> UserRole:
     """
     try:
         decoded_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(decoded_payload['role'], decoded_payload['role']=='admin' )
+        print(decoded_payload['role'], decoded_payload['role'] == 'admin')
         return UserRole(decoded_payload.get("role", UserRole.VISITOR))
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
