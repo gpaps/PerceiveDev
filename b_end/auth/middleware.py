@@ -99,7 +99,10 @@ async def auth_middleware(request: Request, call_next):
     has_perm = has_permission(user_role, required_permission)
     logging.info(f"Has permission: {has_perm}")
 
-    if required_permission is None or not has_perm:
+    if required_permission is None:
+        logging.error("No permission tag found for this route!")
+        raise HTTPException(status_code=403, detail="Endpoint configuration error")
+    elif not has_perm:
         raise HTTPException(status_code=403, detail="Not authorized")
     else:
         response = await call_next(request)
