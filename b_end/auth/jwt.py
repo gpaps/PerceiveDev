@@ -13,7 +13,7 @@ from .roles import UserRole
 
 SECRET_KEY = config('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 59
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
