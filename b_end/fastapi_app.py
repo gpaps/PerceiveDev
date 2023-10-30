@@ -29,20 +29,20 @@ app.middleware("http")(auth_middleware)
 
 
 # TODO to change the tag in the route/method: tags=["Documents"], test try
-# @app.get("/file/{path:path}", tags=["Documents"])  # also downloads the file if there is no function_handle
-# def read_file(path: str):
-#     try:
-#         content = get_file_from_nextcloud(path)
-#         mime_type, encoding = mimetypes.guess_type(path)
-#         if not mime_type:
-#             mime_type = "application/octet-stream"
-#         response = StreamingResponse(BytesIO(content), media_type=mime_type)
-#         response.headers["Content-Disposition"] = f"attachment; filename={path.split('/')[-1]}"
-#         return response
-#     except requests.RequestException as e:
-#         raise HTTPException(status_code=500, detail=f"Error fetching file: {str(e)}")
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+@app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
+def read_file(path: str):
+    try:
+        content = get_file_from_nextcloud(path)
+        mime_type, encoding = mimetypes.guess_type(path)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+        response = StreamingResponse(BytesIO(content), media_type=mime_type)
+        response.headers["Content-Disposition"] = f"attachment; filename={path.split('/')[-1]}"
+        return response
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching file: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 # UPLOAD_FOLDER = "Photos"
@@ -134,6 +134,7 @@ from auth.middleware import extract_user_role_from_token
 async def get_user_role(token: str) -> UserRole:
     payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
     role = payload.get("role", UserRole.VISITOR.value)
+    print(f", role _________________________:{role}")
     return UserRole(role)
 
 
