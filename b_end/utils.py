@@ -66,8 +66,8 @@ def list_files_recursive(remote_path="/"):
                                 headers=headers, auth=(USERNAME, PASSWORD))
 
     if response.status_code != 207:  # 207 Multi-Status is a standard success code for PROPFIND
-        raise Exception(f"Failed to list directory {remote_path}. Status code: {response.status_code}")
-
+        raise HTTPException(status_code=500,
+                            detail=f"Failed to list directory {remote_path}. Status code: {response.status_code}")
     # Parse the XML response
     tree = ET.ElementTree(ET.fromstring(response.content))
 
