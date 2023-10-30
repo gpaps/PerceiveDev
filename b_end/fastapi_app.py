@@ -20,27 +20,29 @@ from auth.models import User, UserInDB, Token
 from fastapi.security import OAuth2PasswordRequestForm
 # logging
 import logging
+from decouple import config
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 app.middleware("http")(auth_middleware)
 
+
 # TODO to change the tag in the route/method: tags=["Documents"], test try
-@app.get("/file/{path:path}", tags=["Documents"])  # also downloads the file if there is no function_handle
-def read_file(path: str):
-    try:
-        content = get_file_from_nextcloud(path)
-        mime_type, encoding = mimetypes.guess_type(path)
-        if not mime_type:
-            mime_type = "application/octet-stream"
-        response = StreamingResponse(BytesIO(content), media_type=mime_type)
-        response.headers["Content-Disposition"] = f"attachment; filename={path.split('/')[-1]}"
-        return response
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching file: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+# @app.get("/file/{path:path}", tags=["Documents"])  # also downloads the file if there is no function_handle
+# def read_file(path: str):
+#     try:
+#         content = get_file_from_nextcloud(path)
+#         mime_type, encoding = mimetypes.guess_type(path)
+#         if not mime_type:
+#             mime_type = "application/octet-stream"
+#         response = StreamingResponse(BytesIO(content), media_type=mime_type)
+#         response.headers["Content-Disposition"] = f"attachment; filename={path.split('/')[-1]}"
+#         return response
+#     except requests.RequestException as e:
+#         raise HTTPException(status_code=500, detail=f"Error fetching file: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 # UPLOAD_FOLDER = "Photos"
@@ -117,9 +119,22 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # This is a basic (MOCK)function that emulates a user authentication system.
 # We would like to fetch the user's role from a database or JWT token.
-def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
-    # print(f'Role:{role}', f"UserRoles:{UserRole}")
-    return role
+# def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
+#     print(f'Role:{role}', f"UserRoles:{UserRole}")
+#     return role
+
+
+from auth.middleware import extract_user_role_from_token
+# def get_user_role():
+#     # Wherever you need to extract the role:
+#     role = extract_user_role_from_token(token)
+#     return role
+
+
+async def get_user_role(token: str) -> UserRole:
+    payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
+    role = payload.get("role", UserRole.VISITOR.value)
+    return UserRole(role)
 
 
 @app.get("/web_portal/", tags=["Tools"])
