@@ -5,10 +5,8 @@ from datetime import datetime, timedelta
 import jwt
 from decouple import config
 
-# Import User models
+# From User models and roles
 from .models import User, UserInDB
-
-# Import user roles
 from .roles import UserRole
 
 SECRET_KEY = config('JWT_SECRET_KEY')
@@ -16,16 +14,14 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 59
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# TODO
-# Mock database for user details
+# TODO Mock database for user details (to replace with real DB later)
 users_db = {
     "tester": {
         "username": "tester",
         "hashed_password": pwd_context.hash("password123"),
-        "role": UserRole.ADMIN
+        "role": UserRole.ADMIN.value
     }
 }
 
@@ -34,15 +30,20 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
+# def get_user(db, username: str):
+#     user_dict = db.get(username)
+#     if user_dict:
+#         return UserInDB(username=user_dict["username"],
+#                         hashed_password=user_dict["hashed_password"],
+#                         password="dummy",
+#                         role=user_dict["role"]
+#                         )
+#     return UserInDB(**user_dict) if user_dict else None
 def get_user(db, username: str):
     user_dict = db.get(username)
     if user_dict:
-        return UserInDB(username=user_dict["username"],
-                        hashed_password=user_dict["hashed_password"],
-                        password="dummy",
-                        role=user_dict["role"]
-                        )
-    return UserInDB(**user_dict) if user_dict else None
+        return UserInDB(**user_dict)
+    return None
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
