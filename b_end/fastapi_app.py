@@ -141,11 +141,11 @@ from auth.middleware import extract_user_role_from_token
 async def get_user_role(token: str) -> UserRole:
     payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
     role = payload.get("role", UserRole.VISITOR.value)
-    print(f", role _________________________:{role}")
+    print(f", role _________: {role}")
     return UserRole(role)
 
 
-@app.get("/web_portal/", tags=["Tools"])
+@app.get("/web_portal/", tags=["Tools", "web_portal", "Documents"])
 async def web_portal(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Tools"):
         raise HTTPException(status_code=403, detail="Permission denied to access web portal")
