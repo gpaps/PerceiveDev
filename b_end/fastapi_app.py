@@ -117,6 +117,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.get("/test/admin", tags=[UserRole.ADMIN.value])
+async def test_admin():
+    return {"status": "Admin access granted!"}
+
+
 # This is a basic (MOCK)function that emulates a user authentication system.
 # We would like to fetch the user's role from a database or JWT token.
 # def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
@@ -125,6 +130,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 from auth.middleware import extract_user_role_from_token
+
+
 # def get_user_role():
 #     # Wherever you need to extract the role:
 #     role = extract_user_role_from_token(token)
