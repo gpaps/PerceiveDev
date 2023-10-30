@@ -53,6 +53,9 @@ PERMISSIONS = {
         "Dataset": True,
         "Trained_Models": True,
         "Code_Repo": True,
-        "Change_User_Permissions": True
+        "Change_User_Permissions": True,
+        # dummy entries
+        "Documents": True
+
     },
 }
