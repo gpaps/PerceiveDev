@@ -52,15 +52,14 @@ PERMISSIONS = {
     },
     UserRole.ADMIN: {
         # "API": True,
+        # dummy entries
+        "web_portal": True,
         "Tools": True,
         "Services": True,
         "Dataset": True,
         "Trained_Models": True,
         "Code_Repo": True,
         "Change_User_Permissions": True,
-        # dummy entries
-        "Documents": True,
-        "web_portal": True,
     },
 }
 
