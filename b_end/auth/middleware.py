@@ -7,6 +7,7 @@ from jwt import PyJWTError
 import jwt
 from .jwt import get_user, users_db
 import logging
+from enum import Enum
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
@@ -18,11 +19,18 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+def has_permission(user_role, required_permission):
+    print(f"Checking permission for role: {user_role} against required: {required_permission}")
+    allowed = PERMISSIONS.get(user_role, {}).get(required_permission, False)
+    return allowed
+
+
 def convert_to_enum(role: str) -> UserRole:
     try:
         logging.info(f"Converting role: {role}")
-        return UserRole(role.upper())
-    except ValueError:
+        # Explicitly convert the role string to an Enum
+        return UserRole[role.upper()]
+    except KeyError:
         logging.warning(f"Failed to convert role: {role}")
         return None
 
@@ -34,7 +42,10 @@ def check_permission(user_role_enum: UserRole, permission: str) -> bool:
 def extract_user_role_from_token(token: str) -> str:
     try:
         decoded_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return decoded_payload['role']
+        role_str = decoded_payload.get("role")
+        print("Extract_user_roles_method outputs: ", f"{role_str}")
+        return role_str
+        # return decoded_payload['role']
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
@@ -43,7 +54,6 @@ def extract_user_role_from_token(token: str) -> str:
 
 async def auth_middleware(request: Request, call_next):
     logging.info("Entering auth middleware")
-
     if request.url.path in PUBLIC_ENDPOINTS:
         return await call_next(request)
 
@@ -61,6 +71,8 @@ async def auth_middleware(request: Request, call_next):
 
     logging.info("About to extract user role from token")
     user_role_str = extract_user_role_from_token(token)
+
+    # Validate role conversion here
     user_role_enum = convert_to_enum(user_role_str)
     if user_role_enum is None:
         logging.warning(f"Invalid role: {user_role_str}")
@@ -68,20 +80,29 @@ async def auth_middleware(request: Request, call_next):
 
     logging.info(f"The extracted token from middleware has user_role: -> {user_role_enum}")
 
+    # Extract required_permission
     route_function = request.scope.get("endpoint")
-
     logging.info("About to check required permission")
     required_permission = next(
-        (tag for tag in getattr(route_function, "tags", []) if tag in PERMISSIONS[user_role_enum.name]), None
+        (tag.split(": ")[1] for tag in getattr(route_function, "tags", []) if "metadata:" in tag), None
     )
-    logging.info(f"Required Permission: {required_permission}")
+    logging.debug(f"Extracted required_permission: {required_permission}")
+
+    # route_function = request.scope.get("endpoint")
+    # logging.info("About to check required permission")
+    # required_permission = next(
+    #     (tag for tag in getattr(route_function, "tags", []) if tag in PERMISSIONS[user_role_enum.name]), None
+    # )
+    # logging.info(f"Required Permission: {required_permission}")
 
     has_perm = check_permission(user_role_enum, required_permission)
     logging.info(f"Has permission: {has_perm}")
 
     if required_permission is None:
-        logging.info("Public route, no permission required.")
-        return await call_next(request)
+        logging.warning("No permission specified, blocking access.")
+        raise HTTPException(status_code=403, detail="Not authorized")
+        # logging.info("Public route, no permission required.")
+        # return await call_next(request)
     elif not has_perm:
         raise HTTPException(status_code=403, detail="Not authorized")
     else:
