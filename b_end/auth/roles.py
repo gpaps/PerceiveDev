@@ -1,10 +1,18 @@
-from enum import Enum
+from enum import Enum, auto
 
 
 class UserRole(str, Enum):
-    VISITOR = "visitor"
-    EDUCATOR = "educator"
-    EXPERT = "expert"
-    PERCEIVE_EXPERT = "perceive_expert"
-    PERCEIVE_DEVELOPER = "perceive_developer"
-    ADMIN = "admin"
+    VISITOR = "VISITOR"
+    EDUCATOR = "EDUCATOR"
+    EXPERT = "EXPERT"
+    PERCEIVE_EXPERT = "PERCEIVE_EXPERT"
+    PERCEIVE_DEVELOPER = "PERCEIVE_DEVELOPER"
+    ADMIN = "ADMIN"
+
+# class UserRole(Enum):
+#     VISITOR = auto()
+#     EDUCATOR = auto()
+#     EXPERT = auto()
+#     PERCEIVE_EXPERT = auto()
+#     PERCEIVE_DEVELOPER = auto()
+#     ADMIN = auto()
