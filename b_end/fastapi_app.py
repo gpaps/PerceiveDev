@@ -14,8 +14,9 @@ from utils import get_file_from_nextcloud, upload_file_to_nextcloud, list_files_
 # authentication package
 from auth.jwt import (verify_password, get_user, create_access_token,
                       oauth2_scheme, users_db, ACCESS_TOKEN_EXPIRE_MINUTES)
+import jwt
 from auth.roles import UserRole
-from auth.middleware import auth_middleware  # , get_current_user
+from auth.middleware import auth_middleware, has_permission  # , get_current_user
 from auth.models import User, UserInDB, Token
 from fastapi.security import OAuth2PasswordRequestForm
 # logging
@@ -111,7 +112,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     # Embed the role in the token payload
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.username, "role": user.role},
+    access_token = create_access_token(data={"sub": user.username, "role": user.role.name},
                                        expires_delta=access_token_expires)
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -132,35 +133,36 @@ async def test_admin():
 from auth.middleware import extract_user_role_from_token
 
 
-# def get_user_role():
-#     # Wherever you need to extract the role:
-#     role = extract_user_role_from_token(token)
-#     return role
-
-
-# async def get_user_role(token: str) -> UserRole:
-#     print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeftasa')
-#     payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
-#     role = payload.get("role", UserRole.VISITOR.value)
-#     print(f", role _________: {role}")
-#     return UserRole(role)
-
-async def get_user_role(token: str = Header(...)) -> UserRole:
-    print('Reached_')
-    if not token.startswith("Bearer "):
-        raise HTTPException(status_code=400, detail="Invalid token format")
+async def get_user_role(token: str = Header(..., alias="Authorization")) -> UserRole:
+    print('Reached ___ get_user_role()method')
+    if not token or not token.startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="Invalid or missing token")
     token = token[7:]
-    print('Reached_token 2 be decoded')
-    payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
+    try:
+        payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     role = payload.get("role", UserRole.VISITOR.value)
-    print(f"Role: {role}")
+    print(f"Prints the Role from get_user_role: {role}")
     return UserRole(role)
 
 
-@app.get("/web_portal/", tags=["admin","web_portal", "Tools", "Services", "Dataset", "Trained_Models", "Code_Repo","Change_User_Permissions"])
+# @app.get("/web_portal/", tags=[UserRole.ADMIN.value, "ADMIN", "Tools"])
+# async def web_portal(user_role: UserRole = Depends(get_user_role)):
+#     print('web_portal - reached')
+#     if not has_permission(user_role, "Tools"):
+#         print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
+#         raise HTTPException(status_code=403, detail="Permission denied to access web portal")
+#     return {"detail": "Welcome to the web portal!"}
+
+@app.get("/web_portal/")
 async def web_portal(user_role: UserRole = Depends(get_user_role)):
     print('web_portal - reached')
     if not has_permission(user_role, "Tools"):
+        print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
         raise HTTPException(status_code=403, detail="Permission denied to access web portal")
     return {"detail": "Welcome to the web portal!"}
 
