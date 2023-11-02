@@ -54,6 +54,7 @@ def extract_user_role_from_token(token: str) -> str:
 
 async def auth_middleware(request: Request, call_next):
     logging.info("Entering auth middleware")
+
     if request.url.path in PUBLIC_ENDPOINTS:
         return await call_next(request)
 
@@ -63,13 +64,6 @@ async def auth_middleware(request: Request, call_next):
         raise HTTPException(status_code=401, detail="Token is missing or not formatted correctly")
 
     token = auth_header.replace("Bearer ", "")
-    logging.info(f"Received Authorization header: {auth_header}")
-
-    if not token:
-        logging.warning("Token is missing")
-        raise HTTPException(status_code=401, detail="Token is missing")
-
-    logging.info("About to extract user role from token")
     user_role_str = extract_user_role_from_token(token)
 
     # Validate role conversion here
@@ -80,31 +74,8 @@ async def auth_middleware(request: Request, call_next):
 
     logging.info(f"The extracted token from middleware has user_role: -> {user_role_enum}")
 
-    # Extract required_permission
-    route_function = request.scope.get("endpoint")
-    logging.info("About to check required permission")
-    required_permission = next(
-        (tag.split(": ")[1] for tag in getattr(route_function, "tags", []) if "metadata:" in tag), None
-    )
-    logging.debug(f"Extracted required_permission: {required_permission}")
-
-    # route_function = request.scope.get("endpoint")
-    # logging.info("About to check required permission")
-    # required_permission = next(
-    #     (tag for tag in getattr(route_function, "tags", []) if tag in PERMISSIONS[user_role_enum.name]), None
-    # )
-    # logging.info(f"Required Permission: {required_permission}")
-
-    has_perm = check_permission(user_role_enum, required_permission)
-    logging.info(f"Has permission: {has_perm}")
-
-    if required_permission is None:
-        logging.warning("No permission specified, blocking access.")
-        raise HTTPException(status_code=403, detail="Not authorized")
-        # logging.info("Public route, no permission required.")
-        # return await call_next(request)
-    elif not has_perm:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    else:
-        response = await call_next(request)
-        return response
+    # Commenting out the required_permission based logic.
+    # At this point, the user is authenticated and the user_role has been identified.
+    # Your route functions will handle the authorization based on this user_role.
+    response = await call_next(request)
+    return response
