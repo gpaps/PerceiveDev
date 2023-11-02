@@ -29,7 +29,6 @@ app = FastAPI()
 app.middleware("http")(auth_middleware)
 
 
-# TODO to change the tag in the route/method: tags=["Documents"], test try
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
 def read_file(path: str):
     try:
@@ -90,7 +89,9 @@ async def get_image(filename: str):
 
         return StreamingResponse(io.BytesIO(content), media_type=mime_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error in get_image: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+        # raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/list_files/")
