@@ -119,7 +119,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/test/admin", tags=[UserRole.ADMIN.value])
+@app.get("/test/admin")#, tags=[UserRole.ADMIN.value])
 async def test_admin():
     return {"status": "Admin access granted!"}
 
@@ -151,7 +151,7 @@ async def get_user_role(token: str = Header(..., alias="Authorization")) -> User
     return UserRole(role)
 
 
-# @app.get("/web_portal/", tags=[UserRole.ADMIN.value, "ADMIN", "Tools"])
+# @app.get("/web_portal/", tags=[UserRole.ADMIN, ])
 # async def web_portal(user_role: UserRole = Depends(get_user_role)):
 #     print('web_portal - reached')
 #     if not has_permission(user_role, "Tools"):
