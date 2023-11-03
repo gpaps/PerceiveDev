@@ -12,7 +12,7 @@ from enum import Enum
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 
-PUBLIC_ENDPOINTS = {"/token"}
+PUBLIC_ENDPOINTS = {"/token", "/docs", "/openapi.json", "/redoc"}
 
 SECRET_KEY = config('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
