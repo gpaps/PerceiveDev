@@ -25,7 +25,11 @@ from decouple import config
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+app = FastAPI(
+    title="PERCEIVE API",
+    description="Backend services for the PERCEIVE project.",
+    version="1.0.0",
+                 )
 app.middleware("http")(auth_middleware)
 
 
