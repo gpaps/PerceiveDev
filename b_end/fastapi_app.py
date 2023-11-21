@@ -1,4 +1,6 @@
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header
+import base64
+
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body
 from fastapi.responses import StreamingResponse
 import cv2
 import numpy as np
@@ -29,8 +31,27 @@ app = FastAPI(
     title="PERCEIVE API",
     description="Backend services for the PERCEIVE project.",
     version="1.0.0",
-                 )
+)
 app.middleware("http")(auth_middleware)
+
+
+@app.post("/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = get_user(users_db, username=form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/logout")
+async def logout():
+    response = Response(content="Logged out", status_code=200)
+    response.delete_cookie(key="Authorization")
+    return response
 
 
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
@@ -49,9 +70,42 @@ def read_file(path: str):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
+@app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
+async def canny_edge_detection(file: UploadFile = File(...), min_threshold: float = Query(default=100, ge=0, le=100),
+                               max_threshold: float = Query(default=200, ge=100, le=300)):
+    # Read file contents and apply Canny edge detection...
+    try:
+        # Read file contents
+        contents = await file.read()
+
+        # Convert the contents to a numpy array (OpenCV format)
+        nparr = np.fromstring(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        # Apply the Canny edge detection
+        edges = cv2.Canny(image, min_threshold, max_threshold)
+
+        # Convert the processed image back to a byte format
+        _, buffer = cv2.imencode(".jpg", edges)
+        encoded_image = base64.b64encode(buffer).decode("utf-8")
+
+        # Upload the file to Nextcloud
+        # status, message = upload_file_to_nextcloud(file.filename, byte_im)
+        status, message = upload_file_to_nextcloud(file.filename, encoded_image)
+
+        if status == "success":
+            return {"image": processed_image_base64}
+            return {"status": "success", "message": message}
+        else:
+            raise HTTPException(status_code=500, detail=message)
+    except Exception as e:
+        logging.error(f"Failed to upload image. Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload image.")
+
+
 # UPLOAD_FOLDER = "Photos"
 @app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...)):  # This method uploads image and applies canny edge detection to it
     try:
         # Read file contents
         contents = await file.read()
@@ -62,6 +116,7 @@ async def upload_file(file: UploadFile = File(...)):
 
         # Apply the Canny edge detection
         edges = cv2.Canny(image, 100, 200)
+        # edges = cv2.Canny(image, min_threshold, max_threshold)
 
         # Convert the processed image back to a byte format
         is_success, im_buf_arr = cv2.imencode(".jpg", edges)
@@ -123,7 +178,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/test/admin")#, tags=[UserRole.ADMIN.value])
+@app.get("/test/admin")  # , tags=[UserRole.ADMIN.value])
 async def test_admin():
     return {"status": "Admin access granted!"}
 
