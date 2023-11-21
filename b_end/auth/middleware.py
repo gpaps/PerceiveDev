@@ -3,7 +3,7 @@ from .permissions import PERMISSIONS
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
 from decouple import config
-from jwt import PyJWTError
+from jwt import PyJWTError, decode, ExpiredSignatureError, InvalidTokenError
 import jwt
 from .jwt import get_user, users_db
 import logging
