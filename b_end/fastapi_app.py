@@ -1,14 +1,15 @@
-import base64
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.exceptions import RequestValidationError
 
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body
-from fastapi.responses import StreamingResponse
 import cv2
 import numpy as np
 from io import BytesIO
 import skimage.io
 import requests
 import mimetypes
-import io
+import io, os, base64
 from datetime import timedelta
 # Nextcloud signin and communication between modules
 from webdav_setup_config import client
@@ -20,7 +21,6 @@ import jwt
 from auth.roles import UserRole
 from auth.middleware import auth_middleware, has_permission  # , get_current_user
 from auth.models import User, UserInDB, Token
-from fastapi.security import OAuth2PasswordRequestForm
 # logging
 import logging
 from decouple import config
@@ -70,13 +70,46 @@ def read_file(path: str):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Error processing request. Check file size or format."}
+    )
+
+
 @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
 async def canny_edge_detection(file: UploadFile = File(...), min_threshold: float = Query(default=100, ge=0, le=100),
                                max_threshold: float = Query(default=200, ge=100, le=300)):
     # Read file contents and apply Canny edge detection...
+    logging.info(f"Received request: File Name = {file.filename}, Content Type = {file.content_type}")
+    # Image size limit (20 MB)
+    MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
+
+    # Check file format
+    allowed_formats = ["image/jpeg", "image/png", "image/tiff"]
+    if file.content_type not in allowed_formats:
+        raise HTTPException(status_code=415, detail="Unsupported file format.")
+
+    contents = await file.read()
+    file_size = len(contents)
+
+    # Check file size
+    if file_size > MAX_FILE_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "File size exceeds 20 MB limit."}
+        )
+
+    if file.content_type not in allowed_formats:
+        return JSONResponse(
+            status_code=415,
+            content={"detail": "Unsupported file format."}
+        )
+
     try:
         # Read file contents
-        contents = await file.read()
+        # contents = await file.read()
 
         # Convert the contents to a numpy array (OpenCV format)
         nparr = np.fromstring(contents, np.uint8)
@@ -90,18 +123,20 @@ async def canny_edge_detection(file: UploadFile = File(...), min_threshold: floa
         encoded_image = base64.b64encode(buffer).decode("utf-8")
 
         # Upload the file to Nextcloud
-        # status, message = upload_file_to_nextcloud(file.filename, byte_im)
         status, message = upload_file_to_nextcloud(file.filename, encoded_image)
 
         if status == "success":
-            return {"image": processed_image_base64}
+            # return {"image": processed_image_base64}
+            # return {"image": encoded_image}
             return {"status": "success", "message": message}
         else:
             raise HTTPException(status_code=500, detail=message)
     except Exception as e:
-        logging.error(f"Failed to upload image. Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload image.")
-
+        logging.error(f"Failed to process image. Error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to process image. Error: {str(e)}"}
+        )
 
 # UPLOAD_FOLDER = "Photos"
 @app.post("/upload/")
