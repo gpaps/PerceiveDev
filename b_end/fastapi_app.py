@@ -1,3 +1,5 @@
+import traceback
+
 from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -132,7 +134,8 @@ async def canny_edge_detection(file: UploadFile = File(...), min_threshold: floa
         else:
             raise HTTPException(status_code=500, detail=message)
     except Exception as e:
-        logging.error(f"Failed to process image. Error: {e}")
+        error_details = traceback.format_exc()
+        logging.error(f"Failed to process image. Error: {e}\n{error_details}")
         return JSONResponse(
             status_code=500,
             content={"detail": f"Failed to process image. Error: {str(e)}"}
