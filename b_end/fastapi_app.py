@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 import traceback
 
 from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
@@ -80,6 +81,27 @@ async def validation_exception_handler(request, exc):
     )
 
 
+class CannyEdgeRequest(BaseModel):
+    image: str
+    filename: str
+    minThreshold: float
+    maxThreshold: float
+
+@app.post("/canny-edge-detection/")
+async def canny_edge_detection(request: CannyEdgeRequest):
+    # Decode the base64 encoded image
+    nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    # Apply Canny edge detection
+    edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
+
+    # Convert the processed image back to a byte format and encode in base64
+    _, buffer = cv2.imencode(".jpg", edges)
+    encoded_image = base64.b64encode(buffer).decode("utf-8")
+
+    return {"image": encoded_image}
+
 @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
 async def canny_edge_detection(file: UploadFile = File(...), min_threshold: float = Query(default=100, ge=0, le=100),
                                max_threshold: float = Query(default=200, ge=100, le=300)):
@@ -130,6 +152,9 @@ async def canny_edge_detection(file: UploadFile = File(...), min_threshold: floa
         if status == "success":
             # return {"image": processed_image_base64}
             # return {"image": encoded_image}
+            # processed_image_url = f"{nextcloud_base_url}/{UPLOAD_FOLDER}/{file.filename}"  # Modify as needed
+            # return {"status": "success", "message": "Image processed successfully",
+            #         "processed_image_url": processed_image_url}
             return {"status": "success", "message": message}
         else:
             raise HTTPException(status_code=500, detail=message)
