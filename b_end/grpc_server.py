@@ -4,6 +4,7 @@ from nextcloud_pb2_grpc import add_NextcloudServiceServicer_to_server, Nextcloud
 from nextcloud_pb2 import FileResponse as NextcloudFileResponse, UploadFileResponse
 from utils import get_file_from_nextcloud, upload_file_to_nextcloud
 
+
 class NextcloudService(NextcloudServiceServicer):
 
     def GetFile(self, request, context):
@@ -13,6 +14,7 @@ class NextcloudService(NextcloudServiceServicer):
     def UploadFile(self, request, context):
         status, message = upload_file_to_nextcloud(request.filename, request.content)
         return UploadFileResponse(status=status, message=message)
+
 
 def serve_grpc():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
