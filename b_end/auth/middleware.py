@@ -12,11 +12,11 @@ from enum import Enum
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 
-PUBLIC_ENDPOINTS = {"/token", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_ENDPOINTS = {"/token", "/docs", "/openapi.json", "/redoc", "/login"}
 
 SECRET_KEY = config('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # old one was "token" testing endpoint
 
 
 def has_permission(user_role, required_permission):
