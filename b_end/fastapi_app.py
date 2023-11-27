@@ -38,6 +38,23 @@ app = FastAPI(
 app.middleware("http")(auth_middleware)
 
 
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = get_user(users_db, username=form_data.username)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    # Embed the role in the token payload
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username, "role": user.role.name},
+                                       expires_delta=access_token_expires)
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+#TODO decide for loging and token endpoints
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = get_user(users_db, username=form_data.username)
@@ -87,6 +104,7 @@ class CannyEdgeRequest(BaseModel):
     minThreshold: float
     maxThreshold: float
 
+
 @app.post("/canny-edge-detection/")
 async def canny_edge_detection(request: CannyEdgeRequest):
     # Decode the base64 encoded image
@@ -102,73 +120,74 @@ async def canny_edge_detection(request: CannyEdgeRequest):
 
     return {"image": encoded_image}
 
-@app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
-async def canny_edge_detection(file: UploadFile = File(...), min_threshold: float = Query(default=100, ge=0, le=100),
-                               max_threshold: float = Query(default=200, ge=100, le=300)):
-    # Read file contents and apply Canny edge detection...
-    logging.info(f"Received request: File Name = {file.filename}, Content Type = {file.content_type}")
-    # Image size limit (20 MB)
-    MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
 
-    # Check file format
-    allowed_formats = ["image/jpeg", "image/png", "image/tiff"]
-    if file.content_type not in allowed_formats:
-        raise HTTPException(status_code=415, detail="Unsupported file format.")
-
-    contents = await file.read()
-    file_size = len(contents)
-
-    # Check file size
-    if file_size > MAX_FILE_SIZE:
-        return JSONResponse(
-            status_code=413,
-            content={"detail": "File size exceeds 20 MB limit."}
-        )
-
-    if file.content_type not in allowed_formats:
-        return JSONResponse(
-            status_code=415,
-            content={"detail": "Unsupported file format."}
-        )
-
-    try:
-        # Read file contents
-        # contents = await file.read()
-
-        # Convert the contents to a numpy array (OpenCV format)
-        nparr = np.fromstring(contents, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        # Apply the Canny edge detection
-        edges = cv2.Canny(image, min_threshold, max_threshold)
-
-        # Convert the processed image back to a byte format
-        _, buffer = cv2.imencode(".jpg", edges)
-        encoded_image = base64.b64encode(buffer).decode("utf-8")
-
-        # Upload the file to Nextcloud
-        status, message = upload_file_to_nextcloud(file.filename, encoded_image)
-
-        if status == "success":
-            # return {"image": processed_image_base64}
-            # return {"image": encoded_image}
-            # processed_image_url = f"{nextcloud_base_url}/{UPLOAD_FOLDER}/{file.filename}"  # Modify as needed
-            # return {"status": "success", "message": "Image processed successfully",
-            #         "processed_image_url": processed_image_url}
-            return {"status": "success", "message": message}
-        else:
-            raise HTTPException(status_code=500, detail=message)
-    except Exception as e:
-        error_details = traceback.format_exc()
-        logging.error(f"Failed to process image. Error: {e}\n{error_details}")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": f"Failed to process image. Error: {str(e)}"}
-        )
+# @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
+# async def canny_edge_detection(file: UploadFile = File(...), min_threshold: float = Query(default=100, ge=0, le=100),
+#                                max_threshold: float = Query(default=200, ge=100, le=300)):
+#     # Read file contents and apply Canny edge detection...
+#     logging.info(f"Received request: File Name = {file.filename}, Content Type = {file.content_type}")
+#     # Image size limit (20 MB)
+#     MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
+#
+#     # Check file format
+#     allowed_formats = ["image/jpeg", "image/png", "image/tiff"]
+#     if file.content_type not in allowed_formats:
+#         raise HTTPException(status_code=415, detail="Unsupported file format.")
+#
+#     contents = await file.read()
+#     file_size = len(contents)
+#
+#     # Check file size
+#     if file_size > MAX_FILE_SIZE:
+#         return JSONResponse(
+#             status_code=413,
+#             content={"detail": "File size exceeds 20 MB limit."}
+#         )
+#
+#     if file.content_type not in allowed_formats:
+#         return JSONResponse(
+#             status_code=415,
+#             content={"detail": "Unsupported file format."}
+#         )
+#
+#     try:
+#         # Read file contents
+#         # contents = await file.read()
+#
+#         # Convert the contents to a numpy array (OpenCV format)
+#         nparr = np.fromstring(contents, np.uint8)
+#         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+#
+#         # Apply the Canny edge detection
+#         edges = cv2.Canny(image, min_threshold, max_threshold)
+#
+#         # Convert the processed image back to a byte format
+#         _, buffer = cv2.imencode(".jpg", edges)
+#         encoded_image = base64.b64encode(buffer).decode("utf-8")
+#
+#         # Upload the file to Nextcloud
+#         status, message = upload_file_to_nextcloud(file.filename, encoded_image)
+#
+#         if status == "success":
+#             # return {"image": processed_image_base64}
+#             # return {"image": encoded_image}
+#             # processed_image_url = f"{nextcloud_base_url}/{UPLOAD_FOLDER}/{file.filename}"  # Modify as needed
+#             # return {"status": "success", "message": "Image processed successfully",
+#             #         "processed_image_url": processed_image_url}
+#             return {"status": "success", "message": message}
+#         else:
+#             raise HTTPException(status_code=500, detail=message)
+#     except Exception as e:
+#         error_details = traceback.format_exc()
+#         logging.error(f"Failed to process image. Error: {e}\n{error_details}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"detail": f"Failed to process image. Error: {str(e)}"}
+#         )
 
 # UPLOAD_FOLDER = "Photos"
 @app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):  # This method uploads image and applies canny edge detection to it
+async def upload_file(file: UploadFile = File(...)):  # This method uploads in photos via grpc service in Nextcloud
     try:
         # Read file contents
         contents = await file.read()
@@ -223,22 +242,6 @@ async def list_all_files():
         return {"status": "success", "files": files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = get_user(users_db, username=form_data.username)
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-
-    if not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    # Embed the role in the token payload
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.username, "role": user.role.name},
-                                       expires_delta=access_token_expires)
-
-    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.get("/test/admin")  # , tags=[UserRole.ADMIN.value])
