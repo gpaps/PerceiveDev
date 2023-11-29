@@ -107,18 +107,30 @@ class CannyEdgeRequest(BaseModel):
 
 @app.post("/canny-edge-detection/")
 async def canny_edge_detection(request: CannyEdgeRequest):
-    # Decode the base64 encoded image
-    nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    # Apply Canny edge detection
-    edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
+    try:
+        # Decode the base64 encoded image
+        nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    # Convert the processed image back to a byte format and encode in base64
-    _, buffer = cv2.imencode(".jpg", edges)
-    encoded_image = base64.b64encode(buffer).decode("utf-8")
+        # Apply Canny edge detection
+        edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
 
-    return {"image": encoded_image}
+        # Convert the processed image back to a byte format and encode in base64
+        _, buffer = cv2.imencode(".jpg", edges)
+        encoded_image = base64.b64encode(buffer).decode("utf-8")
+
+        # Processing the image
+        # processed_image = apply_canny_edge_detection(request.image, request.minThreshold, request.maxThreshold)
+        # return {"image": processed_image}
+        return {"image": encoded_image}
+
+    except ValueError as e:
+        logging.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logging.error(f"Server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 # @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
@@ -193,20 +205,20 @@ async def upload_file(file: UploadFile = File(...)):  # This method uploads in p
         contents = await file.read()
 
         # Convert the contents to a numpy array (OpenCV format)
-        nparr = np.fromstring(contents, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        # nparr = np.fromstring(contents, np.uint8)
+        # image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         # Apply the Canny edge detection
-        edges = cv2.Canny(image, 100, 200)
+        # edges = cv2.Canny(image, 100, 200)
         # edges = cv2.Canny(image, min_threshold, max_threshold)
 
         # Convert the processed image back to a byte format
-        is_success, im_buf_arr = cv2.imencode(".jpg", edges)
-        byte_im = im_buf_arr.tobytes()
+        # is_success, im_buf_arr = cv2.imencode(".jpg", edges)
+        # byte_im = im_buf_arr.tobytes()
 
         # Upload the file to Nextcloud
-        status, message = upload_file_to_nextcloud(file.filename, byte_im)
-        # status, message = upload_file_to_nextcloud(file.filename, contents)
+        # status, message = upload_file_to_nextcloud(file.filename, byte_im)
+        status, message = upload_file_to_nextcloud(file.filename, contents)
 
         if status == "success":
             return {"status": "success", "message": message}
