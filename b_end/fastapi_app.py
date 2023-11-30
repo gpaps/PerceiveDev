@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 import traceback
 
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response, APIRouter
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
@@ -54,7 +54,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-#TODO decide for loging and token endpoints
+
+# TODO decide for loging and token endpoints
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = get_user(users_db, username=form_data.username)
@@ -72,6 +73,25 @@ async def logout():
     response = Response(content="Logged out", status_code=200)
     response.delete_cookie(key="Authorization")
     return response
+
+from auth.middleware import extract_user_role_from_token
+
+
+async def get_user_role(token: str = Header(..., alias="Authorization")) -> UserRole:
+    print('Reached ___ get_user_role()method')
+    if not token or not token.startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="Invalid or missing token")
+    token = token[7:]
+    try:
+        payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    role = payload.get("role", UserRole.VISITOR.value)
+    print(f"Prints the Role from get_user_role: {role}")
+    return UserRole(role)
 
 
 @app.get("/file/{path:path}")  # also downloads the file if there is no function_handle
@@ -98,6 +118,9 @@ async def validation_exception_handler(request, exc):
     )
 
 
+router = APIRouter()
+
+
 class CannyEdgeRequest(BaseModel):
     image: str
     filename: str
@@ -105,32 +128,29 @@ class CannyEdgeRequest(BaseModel):
     maxThreshold: float
 
 
-@app.post("/canny-edge-detection/")
-async def canny_edge_detection(request: CannyEdgeRequest):
+class CannyEdgeResponse(BaseModel):
+    image: str  # base64 encoded processed image
 
-    try:
-        # Decode the base64 encoded image
-        nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        # Apply Canny edge detection
-        edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
+@router.post("/canny-edge-detection/", response_model=CannyEdgeResponse)
+async def canny_edge_detection(
+        file: UploadFile = File(...),
+        min_threshold: float = Query(default=100.0, ge=0, le=100),  # Now with default values
+        max_threshold: float = Query(default=200.0, ge=100, le=300),  # Now with default values
+        user_role: UserRole = Depends(get_user_role)):
 
-        # Convert the processed image back to a byte format and encode in base64
-        _, buffer = cv2.imencode(".jpg", edges)
-        encoded_image = base64.b64encode(buffer).decode("utf-8")
-
-        # Processing the image
-        # processed_image = apply_canny_edge_detection(request.image, request.minThreshold, request.maxThreshold)
-        # return {"image": processed_image}
-        return {"image": encoded_image}
-
-    except ValueError as e:
-        logging.error(f"Validation error: {str(e)}")
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        logging.error(f"Server error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    # Check if the user has permission to use this endpoint
+    if not has_permission(user_role, "CannyEdgeDetection"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied for Canny Edge Detection"
+        )
+    # Read the file contents
+    contents = await file.read()
+    # Process the image with Canny Edge Detection
+    processed_image_base64 = process_image_canny_edge(contents, min_threshold, max_threshold)
+    # Return the processed image in base64 format
+    return CannyEdgeResponse(image=processed_image_base64)
 
 
 # @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
@@ -260,41 +280,6 @@ async def list_all_files():
 async def test_admin():
     return {"status": "Admin access granted!"}
 
-
-# This is a basic (MOCK)function that emulates a user authentication system.
-# We would like to fetch the user's role from a database or JWT token.
-# def get_user_role(role: UserRole = Query(UserRole.VISITOR)) -> UserRole:
-#     print(f'Role:{role}', f"UserRoles:{UserRole}")
-#     return role
-
-
-from auth.middleware import extract_user_role_from_token
-
-
-async def get_user_role(token: str = Header(..., alias="Authorization")) -> UserRole:
-    print('Reached ___ get_user_role()method')
-    if not token or not token.startswith("Bearer "):
-        raise HTTPException(status_code=400, detail="Invalid or missing token")
-    token = token[7:]
-    try:
-        payload = jwt.decode(token, config('JWT_SECRET_KEY'), algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    role = payload.get("role", UserRole.VISITOR.value)
-    print(f"Prints the Role from get_user_role: {role}")
-    return UserRole(role)
-
-
-# @app.get("/web_portal/", tags=[UserRole.ADMIN, ])
-# async def web_portal(user_role: UserRole = Depends(get_user_role)):
-#     print('web_portal - reached')
-#     if not has_permission(user_role, "Tools"):
-#         print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
-#         raise HTTPException(status_code=403, detail="Permission denied to access web portal")
-#     return {"detail": "Welcome to the web portal!"}
 
 @app.get("/web_portal/")
 async def web_portal(user_role: UserRole = Depends(get_user_role)):
