@@ -127,30 +127,20 @@ class CannyEdgeRequest(BaseModel):
     minThreshold: float
     maxThreshold: float
 
+@app.post("/canny-edge-detection/")
+async def canny_edge_detection(request: CannyEdgeRequest):
+    # Decode the base64 encoded image
+    nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-class CannyEdgeResponse(BaseModel):
-    image: str  # base64 encoded processed image
+    # Apply Canny edge detection
+    edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
 
+    # Convert the processed image back to a byte format and encode in base64
+    _, buffer = cv2.imencode(".jpg", edges)
+    encoded_image = base64.b64encode(buffer).decode("utf-8")
 
-@router.post("/canny-edge-detection/", response_model=CannyEdgeResponse)
-async def canny_edge_detection(
-        file: UploadFile = File(...),
-        min_threshold: float = Query(default=100.0, ge=0, le=100),  # Now with default values
-        max_threshold: float = Query(default=200.0, ge=100, le=300),  # Now with default values
-        user_role: UserRole = Depends(get_user_role)):
-
-    # Check if the user has permission to use this endpoint
-    if not has_permission(user_role, "CannyEdgeDetection"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied for Canny Edge Detection"
-        )
-    # Read the file contents
-    contents = await file.read()
-    # Process the image with Canny Edge Detection
-    processed_image_base64 = process_image_canny_edge(contents, min_threshold, max_threshold)
-    # Return the processed image in base64 format
-    return CannyEdgeResponse(image=processed_image_base64)
+    return {"image": encoded_image}
 
 
 # @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
