@@ -142,9 +142,12 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
         raise HTTPException(status_code=413, detail="File size exceeds 20 MB limit.")
 
     # Check file format
-    allowed_formats = ["image/jpeg", "image/png", "image/tiff"]
-    if not request.filename.lower().endswith(tuple(allowed_formats)):
-        return JSONResponse(status_code=415, content={"detail": "Unsupported file format."})
+    allowed_formats = ["jpeg", "png", "tiff"]
+    import imghdr
+
+    file_format = imghdr.what(None, h=image_data)
+    if file_format not in allowed_formats:
+        raise HTTPException(status_code=415, detail="Unsupported file format.")
 
     # Apply Canny edge detection
     edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
