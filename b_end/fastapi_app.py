@@ -127,14 +127,24 @@ class CannyEdgeRequest(BaseModel):
 
 @app.post("/canny-edge-detection/")
 async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = Depends(get_user_role)):
-
     if not has_permission(user_role, "Tools"):
         print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
         raise HTTPException(status_code=403, detail="Permission denied to access to Canny edge detection")
 
     # Decode the base64 encoded image
+    image_data = base64.b64decode(request.image)
     nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    # Check file size
+    MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
+    if len(image_data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 20 MB limit.")
+
+    # Check file format
+    allowed_formats = ["image/jpeg", "image/png", "image/tiff"]
+    if not request.filename.lower().endswith(tuple(allowed_formats)):
+        return JSONResponse(status_code=415, content={"detail": "Unsupported file format."})
 
     # Apply Canny edge detection
     edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
@@ -143,10 +153,10 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
     _, buffer = cv2.imencode(".jpg", edges)
     encoded_image = base64.b64encode(buffer).decode("utf-8")
 
-    return {"image": encoded_image},{"detail": "Applying canny-edge filter to the image !"}
+    return {"image": encoded_image}, {"detail": "Applying canny-edge filter to the image !"}
 
-# UPLOAD_FOLDER = "Photos"
-@app.post("/upload/")
+
+@app.post("/upload/")  # UPLOAD_FOLDER = "Photos"
 async def upload_file(file: UploadFile = File(...)):  # This method uploads in photos via grpc service in Nextcloud
     try:
         # Read file contents
