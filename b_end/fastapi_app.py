@@ -1,11 +1,10 @@
-from pydantic import BaseModel
-import traceback
-
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response, APIRouter
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
 
+import traceback
+from pydantic import BaseModel
 import cv2
 import numpy as np
 from io import BytesIO
@@ -127,7 +126,12 @@ class CannyEdgeRequest(BaseModel):
 
 
 @app.post("/canny-edge-detection/")
-async def canny_edge_detection(request: CannyEdgeRequest):
+async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = Depends(get_user_role)):
+
+    if not has_permission(user_role, "Tools"):
+        print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
+        raise HTTPException(status_code=403, detail="Permission denied to access to Canny edge detection")
+
     # Decode the base64 encoded image
     nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -139,7 +143,17 @@ async def canny_edge_detection(request: CannyEdgeRequest):
     _, buffer = cv2.imencode(".jpg", edges)
     encoded_image = base64.b64encode(buffer).decode("utf-8")
 
-    return {"image": encoded_image}
+    # return {"image": encoded_image}
+    return {"image": encoded_image},{"detail": "Applying canny-edge filter to the image !"}
+
+
+@app.get("/web_portal/")
+async def web_portal(user_role: UserRole = Depends(get_user_role)):
+    print('web_portal - reached')
+    if not has_permission(user_role, "Tools"):
+        print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
+        raise HTTPException(status_code=403, detail="Permission denied to access web portal")
+    return {"detail": "Welcome to the web portal!"}
 
 
 # @app.post("/canny-edge-detection/")  # duplicate route from "upload" method to tackle the colab phase.
