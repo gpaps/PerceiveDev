@@ -74,6 +74,7 @@ async def logout():
     response.delete_cookie(key="Authorization")
     return response
 
+
 from auth.middleware import extract_user_role_from_token
 
 
@@ -118,14 +119,12 @@ async def validation_exception_handler(request, exc):
     )
 
 
-router = APIRouter()
-
-
 class CannyEdgeRequest(BaseModel):
     image: str
     filename: str
     minThreshold: float
     maxThreshold: float
+
 
 @app.post("/canny-edge-detection/")
 async def canny_edge_detection(request: CannyEdgeRequest):
@@ -213,21 +212,6 @@ async def upload_file(file: UploadFile = File(...)):  # This method uploads in p
     try:
         # Read file contents
         contents = await file.read()
-
-        # Convert the contents to a numpy array (OpenCV format)
-        # nparr = np.fromstring(contents, np.uint8)
-        # image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        # Apply the Canny edge detection
-        # edges = cv2.Canny(image, 100, 200)
-        # edges = cv2.Canny(image, min_threshold, max_threshold)
-
-        # Convert the processed image back to a byte format
-        # is_success, im_buf_arr = cv2.imencode(".jpg", edges)
-        # byte_im = im_buf_arr.tobytes()
-
-        # Upload the file to Nextcloud
-        # status, message = upload_file_to_nextcloud(file.filename, byte_im)
         status, message = upload_file_to_nextcloud(file.filename, contents)
 
         if status == "success":
