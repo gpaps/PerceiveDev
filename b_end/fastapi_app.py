@@ -1,11 +1,12 @@
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response, status
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
-
+import ssl
 import traceback
 from pydantic import BaseModel
 import cv2
+import imghdr
 import numpy as np
 from io import BytesIO
 import skimage.io
@@ -78,7 +79,6 @@ from auth.middleware import extract_user_role_from_token
 
 
 async def get_user_role(token: str = Header(..., alias="Authorization")) -> UserRole:
-    print('Reached ___ get_user_role()method')
     if not token or not token.startswith("Bearer "):
         raise HTTPException(status_code=400, detail="Invalid or missing token")
     token = token[7:]
@@ -125,7 +125,11 @@ class CannyEdgeRequest(BaseModel):
     maxThreshold: float
 
 
-@app.post("/canny-edge-detection/")
+class CannyEdgeResponse(BaseModel):
+    image: str
+
+
+@app.post("/canny-edge-detection/", response_model=CannyEdgeResponse, status_code=status.HTTP_200_OK)
 async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Tools"):
         print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
@@ -142,12 +146,16 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
         raise HTTPException(status_code=413, detail="File size exceeds 20 MB limit.")
 
     # Check file format
-    allowed_formats = ["jpeg", "png", "tiff"]
-    import imghdr
+    # allowed_formats = ["jpeg", "png", "tiff"]
+    # file_format = imghdr.what(None, h=image_data)
+    # if file_format not in allowed_formats:
+    #     raise HTTPException(status_code=415, detail=f"Unsupported file format. Supported file formats:"
+    #                                                 f" {allowed_formats}")
 
-    file_format = imghdr.what(None, h=image_data)
-    if file_format not in allowed_formats:
-        raise HTTPException(status_code=415, detail="Unsupported file format.")
+    # File format check using filename
+    if request.filename.split('.')[-1].lower() not in ['jpg', 'jpeg', 'png', 'tiff']:
+        raise HTTPException(status_code=415, detail="Unsupported file format. Supported file formats"
+                                                    "'jpg', 'jpeg', 'png', 'tiff'")
 
     # Apply Canny edge detection
     edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
@@ -156,7 +164,8 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
     _, buffer = cv2.imencode(".jpg", edges)
     encoded_image = base64.b64encode(buffer).decode("utf-8")
 
-    return {"image": encoded_image}, {"detail": "Applying canny-edge filter to the image !"}
+    # logging.info({"image": encoded_image}, {"detail": "Applying canny-edge filter to the image !"})
+    return CannyEdgeResponse(image=encoded_image)
 
 
 @app.post("/upload/")  # UPLOAD_FOLDER = "Photos"
