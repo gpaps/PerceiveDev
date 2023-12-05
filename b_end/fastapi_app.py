@@ -129,43 +129,56 @@ class CannyEdgeResponse(BaseModel):
     image: str
 
 
+class ErrorResponse(BaseModel):
+    error: str
+
+
 @app.post("/canny-edge-detection/", response_model=CannyEdgeResponse, status_code=status.HTTP_200_OK)
 async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = Depends(get_user_role)):
+    # Permission check
     if not has_permission(user_role, "Tools"):
-        print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
-        raise HTTPException(status_code=403, detail="Permission denied to access to Canny edge detection")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied to access to Canny edge detection"
+        )
 
     # Decode the base64 encoded image
-    image_data = base64.b64decode(request.image)
-    nparr = np.frombuffer(base64.b64decode(request.image), np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    try:
+        image_data = base64.b64decode(request.image)
+        nparr = np.frombuffer(image_data, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid image data provided."
+        )
 
-    # Check file size
+    # File size check
     MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
     if len(image_data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 20 MB limit.")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds 20 MB limit."
+        )
 
-    # Check file format
-    # allowed_formats = ["jpeg", "png", "tiff"]
-    # file_format = imghdr.what(None, h=image_data)
-    # if file_format not in allowed_formats:
-    #     raise HTTPException(status_code=415, detail=f"Unsupported file format. Supported file formats:"
-    #                                                 f" {allowed_formats}")
-
-    # File format check using filename
+    # File format check
     if request.filename.split('.')[-1].lower() not in ['jpg', 'jpeg', 'png', 'tiff']:
-        raise HTTPException(status_code=415, detail="Unsupported file format. Supported file formats"
-                                                    "'jpg', 'jpeg', 'png', 'tiff'")
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
+        )
 
-    # Apply Canny edge detection
+    # Apply Canny edge detection and return response
     edges = cv2.Canny(image, request.minThreshold, request.maxThreshold)
-
-    # Convert the processed image back to a byte format and encode in base64
     _, buffer = cv2.imencode(".jpg", edges)
     encoded_image = base64.b64encode(buffer).decode("utf-8")
 
-    # logging.info({"image": encoded_image}, {"detail": "Applying canny-edge filter to the image !"})
     return CannyEdgeResponse(image=encoded_image)
+    # except SomeCustomException as e:  # Replace with your specific exception
+    #     raise HTTPException(
+    #         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+    #         content=ErrorResponse(error=str(e))
+    #     )
 
 
 @app.post("/upload/")  # UPLOAD_FOLDER = "Photos"
