@@ -124,6 +124,7 @@ class CannyEdgeRequest(BaseModel):
     minThreshold: float
     maxThreshold: float
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     try:
@@ -170,14 +171,14 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
 
     # File format check
     if request.filename.split('.')[-1].lower() not in ['jpg', 'jpeg', 'png', 'tiff']:
-        detail = json.dumps({
-            "status_code": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "error": "Unsupported Media Type",
-            "detail": "Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
-        })
+        # detail = json.dumps({
+        #     "status_code": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        #     "error": "Unsupported Media Type",
+        #     "detail": "Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
+        # })
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=detail
+            detail="Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
         )
 
     # Apply Canny edge detection and return response
