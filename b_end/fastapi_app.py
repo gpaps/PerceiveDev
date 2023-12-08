@@ -1,18 +1,15 @@
-from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Response, status
+from fastapi import FastAPI, UploadFile, HTTPException, File, Depends, Path, Query, Header, Body, Request, Response, \
+    status
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.exceptions import RequestValidationError
-import ssl
-import traceback
-from pydantic import BaseModel
-import cv2
-import imghdr
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+import ssl, traceback, json, requests, imghdr, mimetypes, cv2
+from pydantic import BaseModel, validator
 import numpy as np
-from io import BytesIO
 import skimage.io
-import requests
-import mimetypes
 import io, os, base64
+from io import BytesIO
 from datetime import timedelta
 # Nextcloud signin and communication between modules
 from webdav_setup_config import client
@@ -29,6 +26,7 @@ import logging
 from decouple import config
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="PERCEIVE API",
@@ -110,12 +108,14 @@ def read_file(path: str):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=422,
-        content={"detail": "Error processing request. Check file size or format."}
-    )
+class ErrorResponse(BaseModel):
+    status_code: int
+    error: str
+    detail: str
+
+
+class CannyEdgeResponse(BaseModel):
+    image: str
 
 
 class CannyEdgeRequest(BaseModel):
@@ -124,13 +124,19 @@ class CannyEdgeRequest(BaseModel):
     minThreshold: float
     maxThreshold: float
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    try:
+        # Try to parse the detail as JSON
+        error_content = json.loads(exc.detail)
+    except json.JSONDecodeError:
+        # If the detail is not JSON, use it directly
+        error_content = {"detail": exc.detail}
 
-class CannyEdgeResponse(BaseModel):
-    image: str
-
-
-class ErrorResponse(BaseModel):
-    error: str
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_content
+    )
 
 
 @app.post("/canny-edge-detection/", response_model=CannyEdgeResponse, status_code=status.HTTP_200_OK)
@@ -148,9 +154,10 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
         nparr = np.frombuffer(image_data, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     except Exception:
+        logger.error(f"Base64 decoding failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid image data provided."
+            detail="Invalid base64 image data provided. Error: " + str(e)
         )
 
     # File size check
@@ -163,9 +170,14 @@ async def canny_edge_detection(request: CannyEdgeRequest, user_role: UserRole = 
 
     # File format check
     if request.filename.split('.')[-1].lower() not in ['jpg', 'jpeg', 'png', 'tiff']:
+        detail = json.dumps({
+            "status_code": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "error": "Unsupported Media Type",
+            "detail": "Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
+        })
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Unsupported file format. Supported file formats: 'jpg', 'jpeg', 'png', 'tiff'"
+            detail=detail
         )
 
     # Apply Canny edge detection and return response
