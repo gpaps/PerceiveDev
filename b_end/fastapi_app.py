@@ -251,6 +251,14 @@ async def web_portal(user_role: UserRole = Depends(get_user_role)):
     return {"detail": "Welcome to the web portal!"}
 
 
+@app.get("false-color-viz")
+async def false_color(user_role: UserRole = Depends(get_user_role)):
+    if not has_permission(user_role, "Tools"):
+        print(f"Has permission returned: {has_permission(user_role, 'Tools')}")
+        raise HTTPException(status_code=403, detail="Permission denied to access web portal")
+    return {"detail:false-color-viz"}
+
+
 @app.get("/educational_services/", tags=["Services"])
 async def educational_services(user_role: UserRole = Depends(get_user_role)):
     if not has_permission(user_role, "Services"):
