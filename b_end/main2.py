@@ -16,7 +16,7 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8001,
+        port=8000,
         ssl_keyfile="/home/gpaps/PycharmProjects/PerceiveDev/b_end/key.pem",
         ssl_certfile="/home/gpaps/PycharmProjects/PerceiveDev/b_end/cert.pem"
 
