@@ -16,7 +16,7 @@ from webdav_setup_config import client
 from utils import get_file_from_nextcloud, upload_file_to_nextcloud, list_files_recursive
 # authentication package
 from auth.jwt import (verify_password, get_user, create_access_token,
-                      oauth2_scheme, users_db, ACCESS_TOKEN_EXPIRE_MINUTES)
+                      oauth2_scheme, users_db, ACCESS_TOKEN_EXPIRE_MINUTES, pwd_context)
 import jwt
 from auth.roles import UserRole
 from auth.middleware import auth_middleware, has_permission  # , get_current_user
@@ -71,6 +71,18 @@ async def logout():
     response = Response(content="Logged out", status_code=200)
     response.delete_cookie(key="Authorization")
     return response
+
+
+@app.post("/register")
+async def register_user(user: User):
+    # Hash the user's password
+    hashed_password = pwd_context.hash(user.password)
+
+    # Create a new user in the mock database
+    new_user = UserInDB(username=user.username, hashed_password=hashed_password, role=UserRole.VISITOR.value)
+    users_db[user.username] = new_user.dict()
+
+    return {"message": "User successfully registered", "username": user.username}
 
 
 from auth.middleware import extract_user_role_from_token
